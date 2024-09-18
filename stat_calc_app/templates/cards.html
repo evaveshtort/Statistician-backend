@@ -1,20 +1,11 @@
-{% extends 'main_page.html' %}
+{% extends 'page.html' %}
 
 {% block title %}Список метрик{% endblock %}
 
 {% block content %}
 <ul>
     {% for metric in data.metrics %}
-        <li>
-            {% load static %}
-            <link rel="stylesheet"  type="text/css" href="{% static 'css/card.css' %}">
-            <div class="card">
-                <img src={{ metric.picture }} style="width:100%">
-                <div class="container">
-                    <h4><b><a href="{% url 'metric_url' metric.id %}">{{ metric.title }}</a></b></h4>
-                </div>
-            </div>
-        </li>
+        {% include 'card.html' with element=metric %}
     {% empty %}
         <li>Список пуст</li>
     {% endfor %}

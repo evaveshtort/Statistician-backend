@@ -1,0 +1,8 @@
+<div class="flex_container">
+    <div class="container">
+        <img src={{ element.picture }} alt="card" style="width:40%">
+        <h4><b><a class="card-title">{{ element.title }}</a></b></h4>
+        <p>{{ element.description }}</p>
+    </div>
+    <a href="{% url 'metric_url' element.id %}" class="card-link">Узнать больше &#8594</a>
+</div>
