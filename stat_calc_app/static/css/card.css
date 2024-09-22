@@ -21,6 +21,7 @@ body {
 .mainLink {
     color: #ffffff;
     text-decoration: none;
+    padding-left: 5px;
 }
 
 .underHead {
@@ -34,6 +35,7 @@ body {
 }
 
 .searchForm {
+    display: flex;
     padding-left: 15px;
 }
 
@@ -54,6 +56,7 @@ body {
     background-color:#910ed8;
     height: 35px;
     border-width: 0;
+    margin-left: 5px;
     width: 80px;
     color: #ffffff;
     border-radius: 20px;
@@ -73,6 +76,7 @@ body {
 }
 
 .upper {
+    display: flex;
     height: 40px;
     background-color:#910ed8;
     color:#ffffff;
@@ -119,4 +123,19 @@ body {
 
 .container {
     height: 300px;
+}
+
+.metricsNum {
+    background-color: #910ed8;
+    color:#ffffff;
+    border-radius: 8px;
+    width:15px;
+    height: 15px;
+    text-decoration: none;
+    text-align: center;
+    font-family: monospace;
+}
+
+.cartWithNum {
+    display: flex;
 }

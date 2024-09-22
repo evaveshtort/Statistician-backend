@@ -7,8 +7,18 @@
 <form class="searchForm" action="." method="get">
     <input class="searchFrame" name="metricName" type="text">
     <input class="searchBtn" type="submit" value="Поиск" >
-</form>
-<a href="{% url 'cart' data.cart_id %}" class="cartBtn"><img src="http://127.0.0.1:9000/items/shopping-cart.png" style="height:35px"/></a>
+    {% if data.reset_flag%}
+        <a href="{% url 'metrics'%}">
+            <img src="http://127.0.0.1:9000/items/reset.png" style="width:35px"/>
+        </a>
+    {% endif %}
+</form>  
+<div class="cartWithNum">
+<div class="metricsNum">{{data.count_metrics_in_cart}}</div>
+<a href="{% url 'cart' data.cart_id %}" class="cartBtn">
+    <img src="http://127.0.0.1:9000/items/shopping-cart.png" style="height:35px"/>
+</a>
+</div>
 </div>
 <ul>
     {% for metric in data.metrics %}
