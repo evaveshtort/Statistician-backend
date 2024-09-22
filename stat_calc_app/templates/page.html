@@ -3,7 +3,9 @@
 <link rel="stylesheet"  type="text/css" href="{% static 'css/card.css' %}">
 <html lang="en" class="h-100">
 <head>
-  <div class="upper">Statistician</div>
+  <div class="upper">
+  <a href="{% url 'metrics' %}" class="mainLink">Statistician</a>
+  </div>
   <meta charset="utf-8">
     <title>{% block title %}{% endblock %}</title>
 </head>

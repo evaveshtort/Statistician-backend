@@ -3,11 +3,18 @@
 {% block title %}Список метрик{% endblock %}
 
 {% block content %}
+<div class="underHead">
+<form class="searchForm" action="." method="get">
+    <input class="searchFrame" name="metricName" type="text">
+    <input class="searchBtn" type="submit" value="Поиск" >
+</form>
+<a href="{% url 'cart' data.cart_id %}" class="cartBtn"><img src="http://127.0.0.1:9000/items/shopping-cart.png" style="height:35px"/></a>
+</div>
 <ul>
     {% for metric in data.metrics %}
         {% include 'card.html' with element=metric %}
     {% empty %}
-        <li>Список пуст</li>
+        <div class="emptyList">По вашему запросу ничего не найдено</div>
     {% endfor %}
 </ul>
 {% endblock %}
