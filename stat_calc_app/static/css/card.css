@@ -12,10 +12,9 @@ p {
 }
 
 body {
-    margin-top: 30px;
     margin:0;
     padding: 0;
-    background-color: #00000002;
+    background-color: #fefefe;
 }
 
 .mainLink {
@@ -50,6 +49,7 @@ body {
     font-family: monospace;
     font-size: large;
     font-weight: lighter;
+    background-color: #fefefe;
 }
 
 .searchBtn {
@@ -90,6 +90,17 @@ body {
     width: 98%;
 }
 
+.flex_container_card {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: 0.3s;
+    padding: 16px;
+    border-radius: 5px;
+    width: 30%
+}
+
 .card-title {
     font-size:x-large;
     font-family:monospace;
@@ -109,20 +120,8 @@ body {
 }
 
 
-.flex_container {
-    display: flex;
-    flex-wrap: wrap;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 375px;
-    transition: 0.3s;
-    padding: 16px;
-    border-radius: 5px;
-    width: 30%
-}
-
 .container {
-    height: 300px;
+    padding-bottom: 40px;
 }
 
 .metricsNum {
@@ -138,4 +137,35 @@ body {
 
 .cartWithNum {
     display: flex;
+}
+
+.flex_container_cart {
+    padding-top: 40px;
+    padding-left: 150px;
+    display: flex;
+}
+
+.cartItem {
+    padding-left: 20px;
+}
+
+.metricPage {
+    display: flex;
+    flex-direction: column;
+    padding: 60px;
+    padding-top: 40px;
+}
+
+.infoSpace {
+    display: flex;
+    flex-direction: row;
+    grid-gap: 20px;
+    align-items: center;
+}
+
+.metricTitle {
+    font-family: monospace;
+    font-weight: lighter;
+    font-size: xx-large;
+    padding-bottom: 20px;
 }

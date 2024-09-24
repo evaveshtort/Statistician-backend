@@ -1,1 +1,9 @@
 {% extends 'page.html' %}
+
+{% block title %}Корзина{% endblock %}
+
+{% block content %}
+    {% for metric in data %}
+        {% include 'cart_item.html' with element=metric %}
+    {% endfor %}
+{% endblock %}
