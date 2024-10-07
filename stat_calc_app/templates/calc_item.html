@@ -1,8 +1,11 @@
 <div class="flex_container_cart">
     <img src={{ element.picture }} alt="card" style="height:150px">
-    <div class="cartItem">
+    <div class="calcItem">
     <h4><b><a class="card-title">{{ element.metric_name }}</a></b></h4>
-    <p>Набор данных: {{ element.data_for_calc }}</p>
+    <div class="numberOfElems">
+        <p>Количество элементов для расчета: </p>
+        <input class="numberFrame" name="inputData" type="text" placeholder="1">
+    </div>
     <a href="{% url 'metric_url' element.metric_id %}" class="card-link">Узнать больше &#8594</a>
     </div>
 </div>

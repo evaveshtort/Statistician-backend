@@ -23,5 +23,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.GetMetrics, name='metrics'),
     path('metric/<int:id>/', views.GetMetric, name='metric_url'),
-    path('cart/<int:cart_id>/', views.GetCart, name='cart')
+    path('calc_list/<int:calc_list_id>/', views.GetCart, name='calc_list')
 ]

@@ -1,11 +1,11 @@
-{% extends 'page.html' %}
+{% extends 'base_page.html' %}
 
 {% block title %}Список метрик{% endblock %}
 
 {% block content %}
 <div class="underHead">
 <form class="searchForm" action="." method="get">
-    <input class="searchFrame" name="metricName" type="text">
+    <input class="searchFrame" name="metricName" type="text" placeholder="Название метрики:">
     <input class="searchBtn" type="submit" value="Поиск" >
     {% if data.reset_flag%}
         <a href="{% url 'metrics'%}">
@@ -14,15 +14,15 @@
     {% endif %}
 </form>  
 <div class="cartWithNum">
-<div class="metricsNum">{{data.count_metrics_in_cart}}</div>
-<a href="{% url 'cart' data.cart_id %}" class="cartBtn">
+<div class="metricsNum">{{data.count_metrics_in_calc_list}}</div>
+<a href="{% url 'calc_list' data.calc_list_id %}" class="calcBtn">
     <img src="http://127.0.0.1:9000/items/shopping-cart.png" style="height:35px"/>
 </a>
 </div>
 </div>
 <ul>
     {% for metric in data.metrics %}
-        {% include 'card.html' with element=metric %}
+        {% include 'metric_card.html' with element=metric %}
     {% empty %}
         <div class="emptyList">По вашему запросу ничего не найдено</div>
     {% endfor %}

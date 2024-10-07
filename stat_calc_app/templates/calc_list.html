@@ -1,0 +1,13 @@
+{% extends 'base_page.html' %}
+
+{% block title %}Корзина{% endblock %}
+
+{% block content %}
+    <form class="searchForm" action="." method="get">
+        <input class="inputFrame" name="inputData" type="text" placeholder="Введите сюда данные для расчета через пробел:">
+    </form> 
+
+    {% for metric in data %}
+        {% include 'calc_item.html' with element=metric %}
+    {% endfor %}
+{% endblock %}

@@ -2,6 +2,7 @@ ul {
     display: flex;
     flex-direction: row;
     flex-flow: wrap;
+    padding-left: 10%;
 }
 
 p {
@@ -29,7 +30,7 @@ body {
     justify-content: space-between;
 }
 
-.cartBtn {
+.calcBtn {
     padding-right: 15px;
 }
 
@@ -51,6 +52,14 @@ body {
     font-weight: lighter;
     background-color: #fefefe;
 }
+
+.searchFrame::placeholder {
+    font-family: monospace;
+    font-size: large;
+    font-weight: lighter;
+    opacity: 0.5;
+    color: rgb(0, 0, 0);
+  }
 
 .searchBtn {
     background-color:#910ed8;
@@ -121,7 +130,7 @@ body {
 
 
 .container {
-    padding-bottom: 40px;
+    padding-bottom: 20px;
 }
 
 .metricsNum {
@@ -145,8 +154,8 @@ body {
     display: flex;
 }
 
-.cartItem {
-    padding-left: 20px;
+.calcItem {
+    padding-left: 40px;
 }
 
 .metricPage {
@@ -168,4 +177,52 @@ body {
     font-weight: lighter;
     font-size: xx-large;
     padding-bottom: 20px;
+}
+
+.inputFrame {
+    margin-top: 20px;
+    margin-left: 120px;
+    width: 400px;
+    height: 30px;
+    border-radius: 20px;
+    border-color: #910ed8;
+    border-width: 0.1px;
+    padding-left: 20px;
+    padding-right: 20px;
+    font-family: monospace;
+    font-size: large;
+    font-weight: lighter;
+    background-color: #fefefe;
+}
+
+.inputFrame::placeholder {
+    font-family: monospace;
+    font-size: large;
+    font-weight: lighter;
+    opacity: 0.5;
+    color: rgb(0, 0, 0);
+  }
+
+  .numberFrame {
+    width: 30px;
+    height: 30px;
+    border-radius: 20px;
+    border-color: #910ed8;
+    border-width: 0.1px;
+    margin-left: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-family: monospace;
+    font-size: large;
+    font-weight: lighter;
+    background-color: #fefefe;
+    text-align: center;
+}
+
+.numberOfElems {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 40px;
+    padding-bottom: 10px;
 }
