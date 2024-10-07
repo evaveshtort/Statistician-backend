@@ -1,7 +1,7 @@
 <div class="flex_container_card">
     <div class="container">
-        <img src={{ element.picture }} alt="card" style="width:55%">
+        <img src={{ element.picture_url }} alt="card" style="width:55%">
         <h4><b><a class="card-title">{{ element.title }}</a></b></h4>
     </div>
-    <a href="{% url 'metric_url' element.id %}" class="card-link">Узнать больше &#8594</a>
+    <a href="{% url 'metric_url' element.metric_id %}" class="card-link">Узнать больше &#8594</a>
 </div>

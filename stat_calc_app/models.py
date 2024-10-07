@@ -6,6 +6,7 @@ class CalcMetrics(models.Model):
     metric = models.ForeignKey('Metrics', models.DO_NOTHING)
     amount_of_data = models.IntegerField()
     result = models.FloatField(blank=True, null=True)
+    calc_metric_id = models.AutoField(primary_key=True)
 
     class Meta:
         managed = False
@@ -31,8 +32,9 @@ class Calculations(models.Model):
 class Metrics(models.Model):
     metric_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=50)
-    picture_url = models.CharField(max_length=50)
-    description = models.CharField(max_length=255)
+    picture_url = models.CharField(max_length=100)
+    description = models.TextField()
+    status = models.CharField(max_length=20)
 
     class Meta:
         managed = False

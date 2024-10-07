@@ -15,9 +15,15 @@
 </form>  
 <div class="cartWithNum">
 <div class="metricsNum">{{data.count_metrics_in_calc_list}}</div>
+{% if data.calc_list_id != -1 %}
 <a href="{% url 'calc_list' data.calc_list_id %}" class="calcBtn">
     <img src="http://127.0.0.1:9000/items/shopping-cart.png" style="height:35px"/>
 </a>
+{% else %}
+<a class="calcBtn">
+    <img src="http://127.0.0.1:9000/items/shopping-cart.png" style="height:35px"/>
+</a>
+{% endif %}
 </div>
 </div>
 <ul>
