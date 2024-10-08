@@ -4,4 +4,8 @@
         <h4><b><a class="card-title">{{ element.title }}</a></b></h4>
     </div>
     <a href="{% url 'metric_url' element.metric_id %}" class="card-link">Узнать больше &#8594</a>
+    <form class="add" action="add_calculations/{{element.metric_id}}" method="post">
+        {% csrf_token %}
+        <input class="addBtn" type="submit" value="Добавить в корзину &#8594" >
+    </form>
 </div>

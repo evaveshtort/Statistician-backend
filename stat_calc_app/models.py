@@ -4,7 +4,7 @@ from django.db import models
 class CalcMetrics(models.Model):
     calc = models.ForeignKey('Calculations', models.DO_NOTHING)
     metric = models.ForeignKey('Metrics', models.DO_NOTHING)
-    amount_of_data = models.IntegerField()
+    amount_of_data = models.IntegerField(default=1)
     result = models.FloatField(blank=True, null=True)
     calc_metric_id = models.AutoField(primary_key=True)
 
@@ -16,7 +16,7 @@ class CalcMetrics(models.Model):
 
 class Calculations(models.Model):
     calc_id = models.AutoField(primary_key=True)
-    status = models.CharField(max_length=30)
+    status = models.CharField(max_length=30, default='черновик')
     creation_date = models.DateTimeField()
     formation_date = models.DateTimeField(blank=True, null=True)
     end_date = models.DateTimeField(blank=True, null=True)

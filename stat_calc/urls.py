@@ -22,6 +22,8 @@ from stat_calc_app import views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('', views.GetMetrics, name='metrics'),
+    path('add_calculations/<int:metric_id>', views.AddToCalc, name='add_calculations'),
     path('metric/<int:id>/', views.GetMetric, name='metric_url'),
-    path('calc_list/<int:calc_list_id>/', views.GetCalcList, name='calc_list')
+    path('calc_list/<int:calc_list_id>/', views.GetCalcList, name='calc_list'),
+    path('calc_list/<int:calc_list_id>/delete_calculations', views.DeleteCalculations, name='delete_calculations'),
 ]

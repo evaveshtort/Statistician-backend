@@ -3,9 +3,14 @@
 {% block title %}Корзина{% endblock %}
 
 {% block content %}
-    <form class="searchForm" action="." method="get">
+    <div class="upper_calc_list">
         <input class="inputFrame" name="inputData" type="text" placeholder="Введите сюда данные для расчета через пробел:">
-    </form> 
+        
+        <form class="delete" action="delete_calculations" method="post">
+            {% csrf_token %}
+            <input class="delBtn" type="submit" value="Удалить" >
+        </form>
+    </div>
 
     {% for metric in data %}
         {% include 'calc_item.html' with element=metric %}

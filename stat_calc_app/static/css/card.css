@@ -128,6 +128,25 @@ body {
     color: #e4c200
 }
 
+.addBtn {
+    color: #0000007b;
+    font-size:x-large;
+    font-family:monospace;
+    font-weight: lighter;
+    text-decoration: underline;
+    text-underline-offset: 20%;
+    text-decoration-thickness: 1.5px;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    padding-left: 0;
+    padding-top: 5px;
+}
+
+.addBtn:hover{
+    color: #e4c200
+}
+
 
 .container {
     padding-bottom: 20px;
@@ -149,7 +168,8 @@ body {
 }
 
 .flex_container_cart {
-    padding-top: 40px;
+    padding-top: 20px;
+    padding-bottom: 20px;
     padding-left: 150px;
     display: flex;
 }
@@ -180,8 +200,7 @@ body {
 }
 
 .inputFrame {
-    margin-top: 20px;
-    margin-left: 120px;
+    margin-bottom: 20px;
     width: 400px;
     height: 30px;
     border-radius: 20px;
@@ -226,3 +245,30 @@ body {
     height: 40px;
     padding-bottom: 10px;
 }
+
+.delBtn {
+    background-color:#910ed8;
+    height: 35px;
+    border-width: 0;
+    margin-left: 5px;
+    width: 80px;
+    color: #ffffff;
+    border-radius: 20px;
+    font-family: monospace;
+    font-weight: lighter;
+    font-size: large;
+}
+
+.delBtn:hover{
+    background-color: #e4c200
+}
+
+.upper_calc_list {
+    display: flex;
+    flex-direction: row;
+    margin-top: 20px;
+    margin-left: 120px;
+    width: 80%;
+    justify-content: space-between;
+}
+
