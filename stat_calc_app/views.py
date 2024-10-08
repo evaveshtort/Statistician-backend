@@ -31,8 +31,10 @@ def GetMetric(request, id):
     return render(request, 'metric.html', {'data' : target_metric})
 
 def GetCalcList(request, calc_list_id):
-    result_list = Metrics.objects.filter(metric_id__in=CalcMetrics.objects.filter(calc=Calculations.objects.filter(calc_id=calc_list_id, status='черновик')[0]).values_list('metric', flat=True))
-    return render(request, 'calc_list.html', {'data': result_list})
+    if Calculations.objects.filter(calc_id=calc_list_id, status='черновик').exists():
+        result_list = Metrics.objects.filter(metric_id__in=CalcMetrics.objects.filter(calc=Calculations.objects.filter(calc_id=calc_list_id, status='черновик')[0]).values_list('metric', flat=True))
+        return render(request, 'calc_list.html', {'data': result_list})
+    return redirect('metrics')
 
 def AddToCalc(request, metric_id):
     if Calculations.objects.filter(creator=request.user.id, status='черновик').exists():
