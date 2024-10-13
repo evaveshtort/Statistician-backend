@@ -32,9 +32,10 @@ class Calculations(models.Model):
 class Metrics(models.Model):
     metric_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=50)
-    picture_url = models.CharField(max_length=100)
+    picture_url = models.CharField(max_length=100, blank=True, null=True)
     description = models.TextField()
-    status = models.CharField(max_length=20)
+    status = models.CharField(max_length=20, default='действует')
+    metric_code = models.CharField(max_length=50)
 
     class Meta:
         managed = False
