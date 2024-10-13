@@ -4,7 +4,14 @@
 
 {% block content %}
     <div class="upper_calc_list">
-        <input class="inputFrame" name="inputData" type="text" placeholder="Введите сюда данные для расчета через пробел:">
+        <form class="change_data" action="change_data" method="post">
+            {% csrf_token %}
+            {% if data.first.calc.data_for_calc %}
+                <input class="inputFrame" name="inputData" type="text" placeholder="{{data.first.calc.data_for_calc}}">
+            {% else %}
+                <input class="inputFrame" name="inputData" type="text" placeholder="Введите данные для расчёта через пробел:">
+            {% endif %}
+        </form>
         
         <form class="delete" action="delete_calculations" method="post">
             {% csrf_token %}

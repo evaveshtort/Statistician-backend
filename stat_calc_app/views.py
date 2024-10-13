@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, reverse;
+from django.db.models.functions import Coalesce;
 from .models import Metrics, Calculations, CalcMetrics;
 from django.contrib.auth.models import User;
 from django.db.models.functions import Now;
@@ -9,10 +10,10 @@ def GetMetrics(request):
     reset_flag = False
     if request.GET:
         metric_name = request.GET.get('metricName').lower()
-        metric_filtered = Metrics.objects.filter(title__icontains=metric_name)
+        metric_filtered = Metrics.objects.filter(title__icontains=metric_name, status='действует')
         reset_flag = True
     else:
-        metric_filtered = Metrics.objects.all()
+        metric_filtered = Metrics.objects.filter(status='действует')
     if Calculations.objects.filter(creator=request.user.id, status='черновик').exists():
         calc_list = int(Calculations.objects.filter(creator=request.user.id, status='черновик')[0].calc_id)
         cnt_metrics = CalcMetrics.objects.filter(calc=calc_list).count()
@@ -32,7 +33,8 @@ def GetMetric(request, id):
 
 def GetCalcList(request, calc_list_id):
     if Calculations.objects.filter(calc_id=calc_list_id, status='черновик').exists():
-        result_list = Metrics.objects.filter(metric_id__in=CalcMetrics.objects.filter(calc=Calculations.objects.filter(calc_id=calc_list_id, status='черновик')[0]).values_list('metric', flat=True))
+        result_list = CalcMetrics.objects.filter(calc=Calculations.objects.filter(
+            calc_id=calc_list_id, status='черновик')[0]).select_related('metric', 'calc').all()
         return render(request, 'calc_list.html', {'data': result_list})
     return redirect('metrics')
 
@@ -50,3 +52,13 @@ def DeleteCalculations(request, calc_list_id):
     with connection.cursor() as cursor:
         cursor.execute("UPDATE calculations SET status = 'удален' WHERE calc_id = %s", [calc_list_id])
     return redirect('metrics')
+
+def ChangeAmount(request, calc_list_id, calc_metric_id):
+    with connection.cursor() as cursor:
+        cursor.execute("UPDATE calc_metrics SET amount_of_data = %s WHERE calc_metric_id = %s", [request.POST.get('inputData'), calc_metric_id])
+    return redirect(reverse('calc_list', args=(calc_list_id,)))
+
+def ChangeData(request, calc_list_id):
+    with connection.cursor() as cursor:
+        cursor.execute("UPDATE calculations SET data_for_calc = %s WHERE calc_id = %s", [request.POST.get('inputData'), calc_list_id])
+    return redirect(reverse('calc_list', args=(calc_list_id,)))

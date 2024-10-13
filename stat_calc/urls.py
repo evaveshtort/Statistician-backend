@@ -26,4 +26,6 @@ urlpatterns = [
     path('metric/<int:id>/', views.GetMetric, name='metric_url'),
     path('calc_list/<int:calc_list_id>/', views.GetCalcList, name='calc_list'),
     path('calc_list/<int:calc_list_id>/delete_calculations', views.DeleteCalculations, name='delete_calculations'),
+    path('calc_list/<int:calc_list_id>/change_amount/<int:calc_metric_id>', views.ChangeAmount, name='change_amount'),
+    path('calc_list/<int:calc_list_id>/change_data', views.ChangeData, name='change_data'),
 ]
