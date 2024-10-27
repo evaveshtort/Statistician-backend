@@ -57,7 +57,7 @@ class NewUserManager(UserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(("email адрес"), unique=True)
-    password = models.CharField(max_length=50, verbose_name="Пароль")    
+    password = models.CharField(max_length=200, verbose_name="Пароль")    
     is_staff = models.BooleanField(default=False, verbose_name="Является ли пользователь менеджером?")
     is_superuser = models.BooleanField(default=False, verbose_name="Является ли пользователь админом?")
     date_joined = models.DateTimeField(auto_now=True)

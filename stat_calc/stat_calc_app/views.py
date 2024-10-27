@@ -307,6 +307,8 @@ class CalculationUpdateMetric(APIView):
 def login_view(request):
     email = request.data["email"] # допустим передали username и password
     password = request.data["password"]
+    if not email or not password:
+        return HttpResponse("{'status': 'error', 'error': 'Email and password are required'}", status=status.HTTP_400_BAD_REQUEST)
     user = authenticate(request, email=email, password=password)
     if user is not None:
         login(request, user)
@@ -322,4 +324,18 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     model_class = CustomUser
+
+    def create(self, request):
+        if self.model_class.objects.filter(email=request.data['email']).exists():
+            return Response({'status': 'Exist'}, status=400)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            print(serializer.data)
+            self.model_class.objects.create_user(email=serializer.data['email'],
+                                     password=serializer.data['password'],
+                                     is_superuser=serializer.data['is_superuser'],
+                                     is_staff=serializer.data['is_staff'])
+            return Response({'status': 'Success'}, status=200)
+        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
         
