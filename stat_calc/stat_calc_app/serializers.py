@@ -1,15 +1,37 @@
-from .models import CalcMetrics, Calculations, Metrics, AuthUser
+from .models import CalcMetrics, Calculations, Metrics, CustomUser
 from rest_framework import serializers
+from collections import OrderedDict
 
 class MetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metrics
         fields = ["metric_id", "title", "description", "picture_url"]
 
+        def get_fields(self):
+            new_fields = OrderedDict()
+            for name, field in super().get_fields().items():
+                field.required = False
+                new_fields[name] = field
+            return new_fields 
+        
 class UserSerializer(serializers.ModelSerializer):
-   class Meta:
-        model = AuthUser
-        fields = ["password", "username", "first_name", "last_name", "email"]
+    is_staff = serializers.BooleanField(default=False, required=False)
+    is_superuser = serializers.BooleanField(default=False, required=False)
+    class Meta:
+        model = CustomUser
+        fields = ['email', 'password', 'is_staff', 'is_superuser']
+
+# class UserSerializer(serializers.ModelSerializer):
+#    class Meta:
+#         model = AuthUser
+#         fields = ["password", "username", "first_name", "last_name", "email"]
+
+#         def get_fields(self):
+#             new_fields = OrderedDict()
+#             for name, field in super().get_fields().items():
+#                 field.required = False
+#                 new_fields[name] = field
+#             return new_fields 
 
 class CalcMetricSerializer(serializers.ModelSerializer):
     metric = MetricSerializer()

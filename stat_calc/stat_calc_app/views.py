@@ -2,20 +2,25 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from .serializers import MetricSerializer, UserSerializer, CalcMetricSerializer, CalculationSerializer, CalculationDetailSerializer, CalculationUpdateSerializer, CalculationStatusSerializer, CalcMetricUpdateSerializer
-from .models import Metrics, Calculations, CalcMetrics, AuthUser
+from .models import Metrics, Calculations, CalcMetrics, CustomUser
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view
+from rest_framework import viewsets
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from .minio import add_pic, delete_pic
 from django.utils import timezone
 from datetime import datetime
-from django.http import QueryDict
 import statistics
+from drf_yasg.utils import swagger_auto_schema
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
+from rest_framework.permissions import AllowAny
+from django.views.decorators.csrf import csrf_exempt
 
 def user():
     try:
-        user1 = AuthUser.objects.get(id=1)[0]
+        user1 = CustomUser.objects.get(id=1)[0]
     except:
-        user1 = AuthUser(id=1, first_name="Ева", last_name="Вешторт", password=1234, username="admin")
+        user1 = CustomUser(id=1, first_name="Ева", last_name="Вешторт", password=1234, username="admin")
         user1.save()
     return user1
 
@@ -45,6 +50,7 @@ class MetricList(APIView):
 class MetricCreate(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
+    @swagger_auto_schema(request_body=MetricSerializer)
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
@@ -80,6 +86,7 @@ class MetricUpdate(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
 
+    @swagger_auto_schema(request_body=MetricSerializer)
     def put(self, request, metric_id):
         metric = get_object_or_404(self.model_class, metric_id=metric_id)
         serializer = self.serializer_class(metric, data=request.data, partial=True)
@@ -171,6 +178,7 @@ class CalculationUpdate(APIView):
     model_class = Calculations
     serializer_class = CalculationUpdateSerializer
 
+    @swagger_auto_schema(request_body=CalculationUpdateSerializer)
     def put(self, request, calculation_id):
         calculation = get_object_or_404(self.model_class, calc_id=calculation_id, status='черновик')
         serializer_inp = self.serializer_class(calculation, data=request.data, partial=True)
@@ -199,6 +207,7 @@ class CalculationUpdateStatusAdmin(APIView):
     model_class = Calculations
     serializer_class = CalculationStatusSerializer
 
+    @swagger_auto_schema(request_body=CalculationStatusSerializer)
     def put(self, request, calculation_id):
         user1 = user()
         calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
@@ -276,6 +285,7 @@ class CalculationUpdateMetric(APIView):
     model_class = CalcMetrics
     serializer_class = CalcMetricUpdateSerializer
 
+    @swagger_auto_schema(request_body=CalcMetricUpdateSerializer)
     def put(self, request, calculation_id, metric_id):
         calculation = get_object_or_404(Calculations, calc_id=calculation_id, status='черновик')
         metric = get_object_or_404(Metrics, metric_id = metric_id, status='действует')
@@ -289,34 +299,27 @@ class CalculationUpdateMetric(APIView):
             return Response(serializer.data['metric'] | {'amount_of_data': serializer.data['amount_of_data'], 'result': serializer.data['result']}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class UserRegister(APIView):
-    model_class = AuthUser
+@permission_classes([AllowAny])
+@authentication_classes([])
+@csrf_exempt
+@swagger_auto_schema(method='post', request_body=UserSerializer)
+@api_view(['Post'])
+def login_view(request):
+    email = request.data["email"] # допустим передали username и password
+    password = request.data["password"]
+    user = authenticate(request, email=email, password=password)
+    if user is not None:
+        login(request, user)
+        return HttpResponse("{'status': 'ok'}")
+    else:
+        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
+
+def logout_view(request):
+    logout(request._request)
+    return Response({'status': 'Success'})
+    
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-class UserLogin(APIView):
-    model_class = AuthUser
-    def post(self, request):
-        return Response(status=status.HTTP_200_OK)
-
-class UserLogout(APIView):
-    model_class = AuthUser
-    def post(self, request):
-        return Response(status=status.HTTP_200_OK)
-
-class UserUpdateProfile(APIView):
-    model_class = AuthUser
-    serializer_class = UserSerializer
-
-    def put(self, request):
-        user1 = user()
-        serializer_inp = self.serializer_class(user1, data=request.data, partial=True)
-        if serializer_inp.is_valid():
-            serializer_inp.save()
-        return Response(status=status.HTTP_200_OK)
+    model_class = CustomUser
         
