@@ -4,7 +4,7 @@ from rest_framework import serializers
 class MetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metrics
-        fields = ["metric_id", "title", "description", "metric_code", "status", "picture_url"]
+        fields = ["metric_id", "title", "description", "picture_url"]
 
 class UserSerializer(serializers.ModelSerializer):
    class Meta:
@@ -27,7 +27,7 @@ class CalculationSerializer(serializers.ModelSerializer):
     moderator = serializers.StringRelatedField()
     class Meta:
         model = Calculations
-        fields = ["calc_id", "status", "creation_date", "formation_date", "end_date", "creator", "moderator", "data_for_calc"]
+        fields = ["calc_id", "creation_date", "formation_date", "end_date", "creator", "moderator", "data_for_calc"]
 
 class CalculationUpdateSerializer(serializers.ModelSerializer):
     class Meta:

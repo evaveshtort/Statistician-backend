@@ -9,7 +9,7 @@ urlpatterns = [
     path('', include(router.urls)),
     path(r'metrics/', views.MetricList.as_view(), name='metrics-list'),
     path(r'metrics/<int:metric_id>/', views.MetricDetail.as_view(), name='metric-detail'),
-    path(r'metrics/<int:metric_id>/create/', views.MetricCreate.as_view(), name='metric-create'),
+    path(r'metrics/create/', views.MetricCreate.as_view(), name='metric-create'),
     path(r'metrics/<int:metric_id>/update/', views.MetricUpdate.as_view(), name='metric-update'),
     path(r'metrics/<int:metric_id>/delete/', views.MetricDelete.as_view(), name='metric-delete'),
     path(r'metrics/<int:metric_id>/add_picture/', views.MetricAddPicture.as_view(), name='metric-add-picture'),

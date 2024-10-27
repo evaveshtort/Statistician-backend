@@ -32,7 +32,9 @@ class MetricList(APIView):
             metrics = self.model_class.objects.filter(status='действует')
         if Calculations.objects.filter(creator=user1, status='черновик').exists():
             calc_list = int(Calculations.objects.filter(creator=user1, status='черновик')[0].calc_id)
-            cnt_metrics = CalcMetrics.objects.filter(calc=calc_list).count()
+            cnt_metrics = CalcMetrics.objects.filter(calc=calc_list, status='действует').count()
+            if cnt_metrics == 0:
+                calc_list = -1
         else:
             cnt_metrics = 0
             calc_list = -1
@@ -48,7 +50,7 @@ class MetricCreate(APIView):
         if serializer.is_valid():
             metric = serializer.save()
             user1 = user()
-            metric.user = user1
+            metric.creator = user1
             metric.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -96,14 +98,20 @@ class MetricDelete(APIView):
         delete_pic(metric)
         metric.status = 'удален'
         metric.save()
+        for calc_metric in CalcMetrics.objects.filter(metric=metric):
+            calc_metric.status = 'удален'
+            calc_metric.save()
         metrics = self.model_class.objects.filter(status='действует')
-        return Response(self.serializer_class(metrics, many=True))
+        serializer = self.serializer_class(metrics, many=True)
+        return Response(serializer.data)
     
 class AddToCalculation(APIView):
     model_class = CalcMetrics
     serializer_class = CalcMetricSerializer
 
     def post(self, request, metric_id):
+        if Metrics.objects.filter(metric_id=metric_id, status='действует').count() == 0:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         user1 = user()
         if Calculations.objects.filter(creator=user1, status='черновик').exists():
             calc_list = int(Calculations.objects.filter(creator=user1, status='черновик')[0].calc_id)
@@ -117,9 +125,12 @@ class AddToCalculation(APIView):
             Calculations.objects.create(creation_date=timezone.now(), creator=user1)
             self.model_class.objects.create(calc=Calculations.objects.get(creator=user1, status='черновик'), metric=Metrics.objects.get(metric_id=metric_id))
         metrics = self.model_class.objects.filter(calc=Calculations.objects.filter(
-            creator=user1, status='черновик')[0])
+            creator=user1, status='черновик')[0], status='действует')
         serializer = self.serializer_class(metrics, many=True)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        res = []
+        for i in serializer.data:
+            res.append({**i['metric'], **{'amount_of_data': i['amount_of_data'], 'result': i['result']}})
+        return Response(res, status=status.HTTP_201_CREATED)
     
 class CalculationList(APIView):
     model_class = Calculations
@@ -147,11 +158,13 @@ class CalculationDetail(APIView):
     def get(self, request, calculation_id):
         calc = get_object_or_404(Calculations, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
         calculation = self.model_class.objects.filter(calc=calc, status='действует')
+        if calculation.count() == 0:
+            return Response(status=status.HTTP_404_NOT_FOUND)
         serializer = self.serializer_class(calculation, many=True)
         try:
-            res = {'calc': serializer.data[0]['calc'], 'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result'], 'metric':x['metric']} for x in serializer.data]}
+            res = serializer.data[0]['calc'] | {'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result']} | x['metric'] for x in serializer.data]}
         except:
-            res = {'calc': serializer.data['calc'], 'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result'], 'metric':serializer.data['metric']}]}
+            res = serializer.data['calc'] | {'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result']} | serializer.data['metric']]}
         return Response(res)
     
 class CalculationUpdate(APIView):
@@ -159,7 +172,7 @@ class CalculationUpdate(APIView):
     serializer_class = CalculationUpdateSerializer
 
     def put(self, request, calculation_id):
-        calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
+        calculation = get_object_or_404(self.model_class, calc_id=calculation_id, status='черновик')
         serializer_inp = self.serializer_class(calculation, data=request.data, partial=True)
 
         if serializer_inp.is_valid():
@@ -209,16 +222,17 @@ class CalculationUpdateStatusAdmin(APIView):
             if calculation.status == 'завершен':
                 sample = [float(x) for x in calculation.data_for_calc.split(' ')]
                 for metric in CalcMetrics.objects.filter(calc=calculation, status='действует'):
+                    amount = min(len(sample), metric.amount_of_data)
                     if metric.metric.metric_code == 'mathematical_expectation':
-                        metric.result = statistics.mean(sample)
+                        metric.result = statistics.mean(sample[:amount])
                     elif metric.metric.metric_code == 'dispersion':
-                        metric.result = statistics.variance(sample)
+                        metric.result = statistics.variance(sample[:amount])
                     elif metric.metric.metric_code == 'extremes':
-                        metric.result = max(sample)
+                        metric.result = max(sample[:amount])
                     elif metric.metric.metric_code == 'percentiles':
-                        metric.result = statistics.median(sample)
+                        metric.result = statistics.median(sample[:amount])
                     elif metric.metric.metric_code == 'mode':
-                        metric.result = statistics.mode(sample)
+                        metric.result = statistics.mode(sample[:amount])
                     else:
                         continue
                     metric.save()
@@ -226,9 +240,9 @@ class CalculationUpdateStatusAdmin(APIView):
             calculations = CalcMetrics.objects.filter(calc=calculation)
             serializer = CalculationDetailSerializer(calculations, many=True)
             try:
-                res = {'calc': serializer.data[0]['calc'], 'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result'], 'metric':x['metric']} for x in serializer.data]}
+                res = serializer.data[0]['calc'] | {'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result']} | x['metric'] for x in serializer.data]}
             except:
-                res = {'calc': serializer.data['calc'], 'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result'], 'metric':serializer.data['metric']}]}
+                res = serializer.data['calc'] | {'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result']} | serializer.data['metric']]}
             return Response(res)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -256,10 +270,6 @@ class CalculationDeleteMetric(APIView):
         calc_metric.status = 'удален'
         calc_metric.save()
 
-        if self.model_class.objects.filter(calc=calculation, status='действует').count() == 0:
-            calculation.status = 'удален'
-            calculation.save()
-
         return Response(status=status.HTTP_200_OK)
     
 class CalculationUpdateMetric(APIView):
@@ -275,7 +285,8 @@ class CalculationUpdateMetric(APIView):
         if serializer_inp.is_valid():
             serializer_inp.save()
             serializer = CalcMetricSerializer(calc_metric)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+
+            return Response(serializer.data['metric'] | {'amount_of_data': serializer.data['amount_of_data'], 'result': serializer.data['result']}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class UserRegister(APIView):
@@ -300,6 +311,7 @@ class UserUpdateProfile(APIView):
     def put(self, request):
         user1 = user()
         serializer_inp = self.serializer_class(user1, data=request.data, partial=True)
-        serializer_inp.save()
+        if serializer_inp.is_valid():
+            serializer_inp.save()
         return Response(status=status.HTTP_200_OK)
         

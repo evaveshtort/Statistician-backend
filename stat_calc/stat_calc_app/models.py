@@ -37,7 +37,7 @@ class Metrics(models.Model):
     description = models.TextField()
     status = models.CharField(max_length=20, default='действует')
     metric_code = models.CharField(max_length=50)
-    creator = models.ForeignKey('AuthUser', models.DO_NOTHING)
+    creator = models.ForeignKey('AuthUser', models.DO_NOTHING, null=True)
 
     class Meta:
         managed = False
