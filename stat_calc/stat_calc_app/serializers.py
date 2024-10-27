@@ -9,7 +9,7 @@ class MetricSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
    class Meta:
         model = AuthUser
-        fields = ["username", "first_name", "last_name", "email"]
+        fields = ["password", "username", "first_name", "last_name", "email"]
 
 class CalcMetricSerializer(serializers.ModelSerializer):
     metric = MetricSerializer()

@@ -291,8 +291,13 @@ class CalculationUpdateMetric(APIView):
     
 class UserRegister(APIView):
     model_class = AuthUser
+    serializer_class = UserSerializer
     def post(self, request):
-        return Response(status=status.HTTP_200_OK)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 class UserLogin(APIView):
     model_class = AuthUser
