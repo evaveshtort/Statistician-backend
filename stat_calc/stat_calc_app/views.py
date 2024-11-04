@@ -13,37 +13,76 @@ import statistics
 from drf_yasg.utils import swagger_auto_schema
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
+from .permissions import IsAdmin, IsManager
+from django.conf import settings
+import redis
+import uuid
 
-def user():
-    try:
-        user1 = CustomUser.objects.get(id=1)[0]
-    except:
-        user1 = CustomUser(id=1, first_name="Ева", last_name="Вешторт", password=1234, username="admin")
-        user1.save()
-    return user1
+session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    model_class = CustomUser
+
+    def get_permissions(self):
+        if self.action in ['create']:
+            permission_classes = [AllowAny]
+        elif self.action in ['list']:
+            permission_classes = [IsAdmin | IsManager]
+        else:
+            permission_classes = [IsAdmin]
+        return [permission() for permission in permission_classes]
+
+    def create(self, request):
+        if self.model_class.objects.filter(email=request.data['email']).exists():
+            return Response({'status': 'Exist'}, status=400)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            print(serializer.data)
+            self.model_class.objects.create_user(email=serializer.data['email'],
+                                     password=serializer.data['password'],
+                                     is_superuser=serializer.data['is_superuser'],
+                                     is_staff=serializer.data['is_staff'])
+            return Response({'status': 'Success'}, status=200)
+        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+def method_permission_classes(classes):
+    def decorator(func):
+        def decorated_func(self, *args, **kwargs):
+            self.permission_classes = classes        
+            self.check_permissions(self.request)
+            return func(self, *args, **kwargs)
+        return decorated_func
+    return decorator
 
 class MetricList(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
 
     def get(self, request):
-        user1 = user()
         if request.GET:
             metric_name = request.GET.get('metricName').lower()
             metrics = self.model_class.objects.filter(title__icontains=metric_name, status='действует')
         else:
             metrics = self.model_class.objects.filter(status='действует')
-        if Calculations.objects.filter(creator=user1, status='черновик').exists():
-            calc_list = int(Calculations.objects.filter(creator=user1, status='черновик')[0].calc_id)
-            cnt_metrics = CalcMetrics.objects.filter(calc=calc_list, status='действует').count()
-            if cnt_metrics == 0:
+        serializer = self.serializer_class(metrics, many=True)
+
+        try:
+            user1 = request.user
+            if Calculations.objects.filter(creator=user1, status='черновик').exists():
+                calc_list = int(Calculations.objects.filter(creator=user1, status='черновик')[0].calc_id)
+                cnt_metrics = CalcMetrics.objects.filter(calc=calc_list, status='действует').count()
+                if cnt_metrics == 0:
+                    calc_list = -1
+            else:
+                cnt_metrics = 0
                 calc_list = -1
-        else:
+        except:
             cnt_metrics = 0
             calc_list = -1
-        serializer = self.serializer_class(metrics, many=True)
         res = {'draft_calculation_id':calc_list, 'metrics_count':cnt_metrics, 'metrics': serializer.data}
         return Response(res)
 
@@ -51,12 +90,12 @@ class MetricCreate(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
     @swagger_auto_schema(request_body=MetricSerializer)
+    @method_permission_classes((IsManager,))
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             metric = serializer.save()
-            user1 = user()
-            metric.creator = user1
+            metric.creator = request.user
             metric.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -74,6 +113,7 @@ class MetricAddPicture(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
 
+    @method_permission_classes((IsManager,))
     def post(self, request, metric_id):
         metric = get_object_or_404(self.model_class, metric_id=metric_id)
         pic = request.FILES.get("pic")
@@ -86,6 +126,7 @@ class MetricUpdate(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
 
+    @method_permission_classes((IsManager,))
     @swagger_auto_schema(request_body=MetricSerializer)
     def put(self, request, metric_id):
         metric = get_object_or_404(self.model_class, metric_id=metric_id)
@@ -100,6 +141,7 @@ class MetricDelete(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
 
+    @method_permission_classes((IsManager,))
     def delete(self, request, metric_id):
         metric = get_object_or_404(self.model_class, metric_id=metric_id)
         delete_pic(metric)
@@ -119,7 +161,7 @@ class AddToCalculation(APIView):
     def post(self, request, metric_id):
         if Metrics.objects.filter(metric_id=metric_id, status='действует').count() == 0:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        user1 = user()
+        user1 = request.user
         if Calculations.objects.filter(creator=user1, status='черновик').exists():
             calc_list = int(Calculations.objects.filter(creator=user1, status='черновик')[0].calc_id)
             if not self.model_class.objects.filter(calc=calc_list, metric=metric_id).exists():
@@ -143,9 +185,11 @@ class CalculationList(APIView):
     model_class = Calculations
     serializer_class = CalculationSerializer
 
+    @permission_classes([IsAuthenticated])
     def get(self, request):
+        user1 = request.user
         date_format = "%Y-%m-%d"
-        calculations = Calculations.objects.extra(where=["status NOT IN ('черновик', 'удален')"])
+        calculations = Calculations.objects.filter(creator=user1).extra(where=["status NOT IN ('черновик', 'удален')"])
         start_date = datetime(2024, 1, 1)
         end_date = timezone.now()
         if request.GET.get('dateStart'):
@@ -162,8 +206,12 @@ class CalculationDetail(APIView):
     model_class = CalcMetrics
     serializer_class = CalculationDetailSerializer
 
+    @permission_classes([IsAuthenticated])
     def get(self, request, calculation_id):
-        calc = get_object_or_404(Calculations, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
+        print(request.user.is_authenticated)
+        if not request.user.is_authenticated:
+            return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
+        calc = get_object_or_404(Calculations, creator = request.user, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
         calculation = self.model_class.objects.filter(calc=calc, status='действует')
         if calculation.count() == 0:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -180,7 +228,7 @@ class CalculationUpdate(APIView):
 
     @swagger_auto_schema(request_body=CalculationUpdateSerializer)
     def put(self, request, calculation_id):
-        calculation = get_object_or_404(self.model_class, calc_id=calculation_id, status='черновик')
+        calculation = get_object_or_404(self.model_class, calc_id=calculation_id, status='черновик', creator=request.user)
         serializer_inp = self.serializer_class(calculation, data=request.data, partial=True)
 
         if serializer_inp.is_valid():
@@ -194,7 +242,7 @@ class CalculationUpdateStatusUser(APIView):
     serializer_class = CalculationSerializer
 
     def put(self, request, calculation_id):
-        calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
+        calculation = get_object_or_404(self.model_class, calc_id=calculation_id, creator=request.user)
         if calculation.status != 'черновик' or not calculation.data_for_calc:
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
         calculation.status = 'сформирован'
@@ -207,9 +255,10 @@ class CalculationUpdateStatusAdmin(APIView):
     model_class = Calculations
     serializer_class = CalculationStatusSerializer
 
+    @method_permission_classes((IsManager,))
     @swagger_auto_schema(request_body=CalculationStatusSerializer)
     def put(self, request, calculation_id):
-        user1 = user()
+        user1 = request.user
         calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
         if calculation.status != 'сформирован' or not calculation.data_for_calc:
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
@@ -235,7 +284,10 @@ class CalculationUpdateStatusAdmin(APIView):
                     if metric.metric.metric_code == 'mathematical_expectation':
                         metric.result = statistics.mean(sample[:amount])
                     elif metric.metric.metric_code == 'dispersion':
-                        metric.result = statistics.variance(sample[:amount])
+                        if amount == 1:
+                            metric.result = 0
+                        else:
+                            metric.result = statistics.variance(sample[:amount])
                     elif metric.metric.metric_code == 'extremes':
                         metric.result = max(sample[:amount])
                     elif metric.metric.metric_code == 'percentiles':
@@ -260,7 +312,7 @@ class CalculationDelete(APIView):
     serializer_class = MetricSerializer
 
     def delete(self, request, calculation_id):
-        calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
+        calculation = get_object_or_404(self.model_class, calc_id=calculation_id, creator=request.user)
         if calculation.status == 'черновик':
             calculation.status = 'удален'
             calculation.formation_date = timezone.now()
@@ -273,7 +325,7 @@ class CalculationDeleteMetric(APIView):
     serializer_class = CalculationDetailSerializer
 
     def delete(self, request, calculation_id, metric_id):
-        calculation = get_object_or_404(Calculations, calc_id=calculation_id, status='черновик')
+        calculation = get_object_or_404(Calculations, calc_id=calculation_id, status='черновик', creator=request.user)
         metric = get_object_or_404(Metrics, metric_id = metric_id, status='действует')
         calc_metric = get_object_or_404(self.model_class, calc=calculation, metric=metric, status='действует')
         calc_metric.status = 'удален'
@@ -287,7 +339,7 @@ class CalculationUpdateMetric(APIView):
 
     @swagger_auto_schema(request_body=CalcMetricUpdateSerializer)
     def put(self, request, calculation_id, metric_id):
-        calculation = get_object_or_404(Calculations, calc_id=calculation_id, status='черновик')
+        calculation = get_object_or_404(Calculations, calc_id=calculation_id, status='черновик', creator=request.user)
         metric = get_object_or_404(Metrics, metric_id = metric_id, status='действует')
         calc_metric = get_object_or_404(self.model_class, calc=calculation, metric=metric, status='действует')
         serializer_inp = self.serializer_class(calc_metric, data=request.data, partial=True)
@@ -299,43 +351,36 @@ class CalculationUpdateMetric(APIView):
             return Response(serializer.data['metric'] | {'amount_of_data': serializer.data['amount_of_data'], 'result': serializer.data['result']}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-@permission_classes([AllowAny])
-@authentication_classes([])
 @csrf_exempt
 @swagger_auto_schema(method='post', request_body=UserSerializer)
 @api_view(['Post'])
+@permission_classes([AllowAny])
+@authentication_classes([])
 def login_view(request):
-    email = request.data["email"] # допустим передали username и password
+    username = request.data["email"] 
     password = request.data["password"]
-    if not email or not password:
-        return HttpResponse("{'status': 'error', 'error': 'Email and password are required'}", status=status.HTTP_400_BAD_REQUEST)
-    user = authenticate(request, email=email, password=password)
+    user = authenticate(request, email=username, password=password)
     if user is not None:
         login(request, user)
-        return HttpResponse("{'status': 'ok'}")
+        random_key = str(uuid.uuid4())
+        session_storage.set(random_key, username)
+
+        response = HttpResponse("{'status': 'ok'}")
+        response.set_cookie("session_id", random_key)
+
+        return response
     else:
         return HttpResponse("{'status': 'error', 'error': 'login failed'}")
 
+@api_view(['Post'])
 def logout_view(request):
-    logout(request._request)
-    return Response({'status': 'Success'})
-    
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
-    serializer_class = UserSerializer
-    model_class = CustomUser
+    session_id = request.COOKIES["session_id"]
+    if session_id:
+        session_storage.delete(session_id)
+    logout(request)
 
-    def create(self, request):
-        if self.model_class.objects.filter(email=request.data['email']).exists():
-            return Response({'status': 'Exist'}, status=400)
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            print(serializer.data)
-            self.model_class.objects.create_user(email=serializer.data['email'],
-                                     password=serializer.data['password'],
-                                     is_superuser=serializer.data['is_superuser'],
-                                     is_staff=serializer.data['is_staff'])
-            return Response({'status': 'Success'}, status=200)
-        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    response = Response({'status': 'Success'})
+    response.delete_cookie("session_id")
+    return response
 
         

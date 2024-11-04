@@ -10,7 +10,7 @@ from drf_yasg import openapi
 
 
 router = routers.DefaultRouter()
-router.register(r'user', views.UserViewSet, basename='user')
+router.register(r'users/register', views.UserViewSet, basename='user')
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -50,6 +50,6 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
-    path('login/',  views.login_view, name='login'),
-    path('logout/', views.logout_view, name='logout'),
+    path('users/login/',  views.login_view, name='login'),
+    path('users/logout/', views.logout_view, name='logout'),
 ]
