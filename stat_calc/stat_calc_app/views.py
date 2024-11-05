@@ -11,6 +11,7 @@ from django.utils import timezone
 from datetime import datetime
 import statistics
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -19,6 +20,13 @@ from .permissions import IsAdmin, IsManager
 from django.conf import settings
 import redis
 import uuid
+
+session_id_cookie = openapi.Parameter(
+    'session_id', 
+    in_=openapi.IN_HEADER, 
+    description="Session ID cookie", 
+    type=openapi.TYPE_STRING
+)
 
 session_storage = redis.StrictRedis(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
 
@@ -89,7 +97,7 @@ class MetricList(APIView):
 class MetricCreate(APIView):
     model_class = Metrics
     serializer_class = MetricSerializer
-    @swagger_auto_schema(request_body=MetricSerializer)
+    @swagger_auto_schema(request_body=MetricSerializer, manual_parameters=[session_id_cookie])
     @method_permission_classes((IsManager,))
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -127,7 +135,7 @@ class MetricUpdate(APIView):
     serializer_class = MetricSerializer
 
     @method_permission_classes((IsManager,))
-    @swagger_auto_schema(request_body=MetricSerializer)
+    @swagger_auto_schema(request_body=MetricSerializer, manual_parameters=[session_id_cookie])
     def put(self, request, metric_id):
         metric = get_object_or_404(self.model_class, metric_id=metric_id)
         serializer = self.serializer_class(metric, data=request.data, partial=True)
@@ -187,9 +195,14 @@ class CalculationList(APIView):
 
     @permission_classes([IsAuthenticated])
     def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
         user1 = request.user
         date_format = "%Y-%m-%d"
-        calculations = Calculations.objects.filter(creator=user1).extra(where=["status NOT IN ('черновик', 'удален')"])
+        if user1.is_staff or user1.is_superuser:
+            calculations = Calculations.objects.extra(where=["status NOT IN ('черновик', 'удален')"])
+        else:
+            calculations = Calculations.objects.filter(creator=user1).extra(where=["status NOT IN ('черновик', 'удален')"])
         start_date = datetime(2024, 1, 1)
         end_date = timezone.now()
         if request.GET.get('dateStart'):
@@ -208,7 +221,6 @@ class CalculationDetail(APIView):
 
     @permission_classes([IsAuthenticated])
     def get(self, request, calculation_id):
-        print(request.user.is_authenticated)
         if not request.user.is_authenticated:
             return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
         calc = get_object_or_404(Calculations, creator = request.user, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
@@ -226,7 +238,7 @@ class CalculationUpdate(APIView):
     model_class = Calculations
     serializer_class = CalculationUpdateSerializer
 
-    @swagger_auto_schema(request_body=CalculationUpdateSerializer)
+    @swagger_auto_schema(request_body=CalculationUpdateSerializer, manual_parameters=[session_id_cookie])
     def put(self, request, calculation_id):
         calculation = get_object_or_404(self.model_class, calc_id=calculation_id, status='черновик', creator=request.user)
         serializer_inp = self.serializer_class(calculation, data=request.data, partial=True)
@@ -256,7 +268,7 @@ class CalculationUpdateStatusAdmin(APIView):
     serializer_class = CalculationStatusSerializer
 
     @method_permission_classes((IsManager,))
-    @swagger_auto_schema(request_body=CalculationStatusSerializer)
+    @swagger_auto_schema(request_body=CalculationStatusSerializer, manual_parameters=[session_id_cookie])
     def put(self, request, calculation_id):
         user1 = request.user
         calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
@@ -337,7 +349,7 @@ class CalculationUpdateMetric(APIView):
     model_class = CalcMetrics
     serializer_class = CalcMetricUpdateSerializer
 
-    @swagger_auto_schema(request_body=CalcMetricUpdateSerializer)
+    @swagger_auto_schema(request_body=CalcMetricUpdateSerializer, manual_parameters=[session_id_cookie])
     def put(self, request, calculation_id, metric_id):
         calculation = get_object_or_404(Calculations, calc_id=calculation_id, status='черновик', creator=request.user)
         metric = get_object_or_404(Metrics, metric_id = metric_id, status='действует')
@@ -352,7 +364,7 @@ class CalculationUpdateMetric(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 @csrf_exempt
-@swagger_auto_schema(method='post', request_body=UserSerializer)
+@swagger_auto_schema(method='post', request_body=UserSerializer, manual_parameters=[session_id_cookie])
 @api_view(['Post'])
 @permission_classes([AllowAny])
 @authentication_classes([])
