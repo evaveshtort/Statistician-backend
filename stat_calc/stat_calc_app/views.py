@@ -25,9 +25,11 @@ class MetricList(APIView):
 
     def get(self, request):
         user1 = user()
+        reset_flag = False
         if request.GET:
             metric_name = request.GET.get('metricName').lower()
             metrics = self.model_class.objects.filter(title__icontains=metric_name, status='действует')
+            reset_flag = True
         else:
             metrics = self.model_class.objects.filter(status='действует')
         if Calculations.objects.filter(creator=user1, status='черновик').exists():
@@ -39,7 +41,7 @@ class MetricList(APIView):
             cnt_metrics = 0
             calc_list = -1
         serializer = self.serializer_class(metrics, many=True)
-        res = {'draft_calculation_id':calc_list, 'metrics_count':cnt_metrics, 'metrics': serializer.data}
+        res = {'draft_calculation_id':calc_list, 'metrics_count':cnt_metrics, 'reset_flag':reset_flag, 'metrics': serializer.data}
         return Response(res)
 
 class MetricCreate(APIView):
