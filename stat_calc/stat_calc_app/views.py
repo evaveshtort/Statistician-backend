@@ -395,4 +395,29 @@ def logout_view(request):
     response.delete_cookie("session_id")
     return response
 
+@swagger_auto_schema(method='put', request_body=UserSerializer, manual_parameters=[session_id_cookie])
+@api_view(['Put'])
+def update_view(request):
+    session_id = request.COOKIES["session_id"]
+    if session_id:
+        username_old = session_storage.get(session_id).decode('utf-8')
+        if username_old:
+            user = CustomUser.objects.filter(email=username_old)[0]
+            if user:
+                response = HttpResponse("{'status': 'ok'}")
+                if "email" in request.data.keys():
+                    if CustomUser.objects.filter(email=request.data["email"] ).exists():
+                        return Response({'status': 'Exist'}, status=400)
+                    user.email = request.data["email"] 
+                    session_storage.delete(session_id)
+                    random_key = str(uuid.uuid4())
+                    session_storage.set(random_key, request.data["email"])
+                    response.set_cookie("session_id", random_key)
+                if "password" in request.data.keys():
+                    user.set_password(request.data["password"])
+                user.save()
+                return response
+
+    return HttpResponse("{'status': 'error', 'error': 'database error'}")
+
         
