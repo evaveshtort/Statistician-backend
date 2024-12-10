@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 
     'stat_calc_app',
     'drf_yasg',
+    'corsheaders',
 ]
 
 REST_FRAMEWORK = {
@@ -63,6 +64,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = "stat_calc.urls"
@@ -154,3 +156,23 @@ MINIO_USE_SSL = False
 
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
+
+CORS_ALLOWED_ORIGINS = [
+    "https://evaveshtort.github.io",  
+    "https://localhost:3000",
+]
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://192\.168\.\d+\.\d+(:\d+)?$",
+]
+
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
+
+CORS_ALLOW_CREDENTIALS = True
