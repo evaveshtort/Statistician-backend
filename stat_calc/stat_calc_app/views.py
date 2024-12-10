@@ -223,7 +223,10 @@ class CalculationDetail(APIView):
     def get(self, request, calculation_id):
         if not request.user.is_authenticated:
             return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
-        calc = get_object_or_404(Calculations, creator = request.user, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
+        if not request.user.is_staff:
+            calc = get_object_or_404(Calculations, creator = request.user, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
+        else:
+            calc = get_object_or_404(Calculations, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
         calculation = self.model_class.objects.filter(calc=calc, status='действует')
         if calculation.count() == 0:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -382,7 +385,7 @@ def login_view(request):
 
         return response
     else:
-        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
+        return Response("{'status': 'error', 'error': 'login failed'}", status=status.HTTP_403_FORBIDDEN)
 
 @api_view(['Post'])
 def logout_view(request):

@@ -17,9 +17,8 @@ def add_pic(new_metric, pic):
            secret_key=settings.AWS_SECRET_ACCESS_KEY,
            secure=settings.MINIO_USE_SSL
     )
-    code = new_metric.metric_code
     i = new_metric.metric_id
-    img_obj_name = f"{code}" + '_' + f"{i}.png"
+    img_obj_name = f"{i}.png"
 
     if not pic:
         return Response({"error": "Нет файла для изображения метрики."})
