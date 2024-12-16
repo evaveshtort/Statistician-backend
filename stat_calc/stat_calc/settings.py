@@ -159,7 +159,7 @@ REDIS_PORT = 6379
 
 CORS_ALLOWED_ORIGINS = [
     "https://evaveshtort.github.io",  
-    "https://localhost:3000",
+    "http://localhost:3000",
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
