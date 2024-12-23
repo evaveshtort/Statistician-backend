@@ -200,9 +200,9 @@ class CalculationList(APIView):
         user1 = request.user
         date_format = "%Y-%m-%d"
         if user1.is_staff or user1.is_superuser:
-            calculations = Calculations.objects.extra(where=["status NOT IN ('черновик', 'удален')"])
+            calculations = Calculations.objects.extra(where=["status NOT IN ('черновик', 'удален', 'отклонен')"])
         else:
-            calculations = Calculations.objects.filter(creator=user1).extra(where=["status NOT IN ('черновик', 'удален')"])
+            calculations = Calculations.objects.filter(creator=user1).extra(where=["status NOT IN ('черновик', 'удален', 'отклонен')"])
         start_date = datetime(2024, 1, 1)
         end_date = timezone.now()
         if request.GET.get('dateStart'):
@@ -303,7 +303,7 @@ class CalculationUpdateStatusAdmin(APIView):
                             metric.result = 0
                         else:
                             metric.result = statistics.variance(sample[:amount])
-                    elif metric.metric.metric_code == 'extremes':
+                    elif metric.metric.metric_code == 'exremes':
                         metric.result = max(sample[:amount])
                     elif metric.metric.metric_code == 'percentiles':
                         metric.result = statistics.median(sample[:amount])
