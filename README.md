@@ -15,4 +15,5 @@ api: Создание веб-сервиса
 autorisation: Добавление авторизации
 
 Ссылка на репозиторий с фронтендом: https://github.com/evaveshtort/Statistician-frontend
+
 Ссылка на pages: https://evaveshtort.github.io/statistician-frontend/metrics
