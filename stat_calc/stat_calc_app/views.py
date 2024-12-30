@@ -8,7 +8,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from .minio import add_pic, delete_pic
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
 import statistics
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -20,6 +20,8 @@ from .permissions import IsAdmin, IsManager
 from django.conf import settings
 import redis
 import uuid
+from rest_framework.viewsets import ViewSet
+from rest_framework.decorators import action
 
 session_id_cookie = openapi.Parameter(
     'session_id', 
@@ -100,10 +102,17 @@ class MetricCreate(APIView):
     @swagger_auto_schema(request_body=MetricSerializer, manual_parameters=[session_id_cookie])
     @method_permission_classes((IsManager,))
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, partial=True)
         if serializer.is_valid():
             metric = serializer.save()
-            metric.creator = request.user
+            session_id = request.COOKIES["session_id"]
+            print(session_id)
+            if session_id:
+                username = session_storage.get(session_id).decode('utf-8')
+                print(username)
+                if username:
+                    print(CustomUser.objects.filter(email=username)[0])
+                    metric.creator =  CustomUser.objects.filter(email=username)[0]
             metric.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -150,6 +159,14 @@ class MetricDelete(APIView):
     serializer_class = MetricSerializer
 
     @method_permission_classes((IsManager,))
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: MetricSerializer(many=True), 
+            status.HTTP_404_NOT_FOUND: "Not Found",
+            status.HTTP_403_FORBIDDEN: "Forbidden"
+        },
+        operation_description="Удаляет метрику по заданному ID. Меняет статус метрики на 'удален', а также всех связанных расчетов."
+    )
     def delete(self, request, metric_id):
         metric = get_object_or_404(self.model_class, metric_id=metric_id)
         delete_pic(metric)
@@ -160,11 +177,21 @@ class MetricDelete(APIView):
             calc_metric.save()
         metrics = self.model_class.objects.filter(status='действует')
         serializer = self.serializer_class(metrics, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, )
     
 class AddToCalculation(APIView):
     model_class = CalcMetrics
     serializer_class = CalcMetricSerializer
+
+    @swagger_auto_schema(
+        request_body=None, 
+        responses={
+            status.HTTP_201_CREATED: CalcMetricSerializer(many=True), 
+            status.HTTP_404_NOT_FOUND: "Not Found",
+            status.HTTP_403_FORBIDDEN: "Forbidden"
+        },
+        operation_description="Добавляет метрику к черновику расчета. Если черновика нет, создает новый."
+    )
 
     def post(self, request, metric_id):
         if Metrics.objects.filter(metric_id=metric_id, status='действует').count() == 0:
@@ -194,6 +221,35 @@ class CalculationList(APIView):
     serializer_class = CalculationSerializer
 
     @permission_classes([IsAuthenticated])
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: CalculationSerializer(),
+            status.HTTP_404_NOT_FOUND: "Not Found",
+            status.HTTP_403_FORBIDDEN: "Forbidden"
+        },
+        manual_parameters=[
+            openapi.Parameter(
+                name="status",  
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING, 
+                required=False,  
+            ),
+            openapi.Parameter(
+                name="dateStart",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATE, 
+                required=False,
+            ),
+            openapi.Parameter(
+                name="dateEnd",
+                in_=openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATE,
+                required=False,
+            ),
+        ]
+    )
     def get(self, request):
         if not request.user.is_authenticated:
             return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
@@ -206,27 +262,40 @@ class CalculationList(APIView):
         start_date = datetime(2024, 1, 1)
         end_date = timezone.now()
         if request.GET.get('dateStart'):
-            start_date = datetime.strptime(request.GET.get('dateStart'), date_format).date()
+            start_date = datetime.strptime(request.GET.get('dateStart'), date_format)
+            start_date = start_date - timedelta(hours=3)
+            print(start_date)
         if request.GET.get('dateEnd'):
-            end_date = datetime.strptime(request.GET.get('dateEnd'), date_format).date()
-        calculations = calculations.filter(formation_date__gte=start_date, formation_date__lt=end_date)
+            end_date = datetime.strptime(request.GET.get('dateEnd'), date_format)
+            end_date = end_date.replace(hour=23, minute=59, second=59)
+            end_date = end_date - timedelta(hours=3)
+            print(end_date)
+        calculations = calculations.filter(formation_date__gte=start_date, formation_date__lte=end_date)
         if request.GET.get('status'):
             calculations = calculations.filter(status=request.GET.get('status'))
         serializer = self.serializer_class(calculations, many=True)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class CalculationDetail(APIView):
     model_class = CalcMetrics
     serializer_class = CalculationDetailSerializer
 
     @permission_classes([IsAuthenticated])
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: CalculationDetailSerializer(),
+            status.HTTP_404_NOT_FOUND: "Not Found",
+            status.HTTP_403_FORBIDDEN: "Forbidden"
+        },
+    )
+
     def get(self, request, calculation_id):
         if not request.user.is_authenticated:
             return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
+        calc = get_object_or_404(Calculations, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
         if not request.user.is_staff:
-            calc = get_object_or_404(Calculations, creator = request.user, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
-        else:
-            calc = get_object_or_404(Calculations, calc_id=calculation_id, status__in=['черновик', 'сформирован', 'завершен', 'отклонен'])
+            if not calc.creator == request.user:
+                return Response({'status':'Only for authorized users'}, status=status.HTTP_403_FORBIDDEN)
         calculation = self.model_class.objects.filter(calc=calc, status='действует')
         if calculation.count() == 0:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -235,7 +304,7 @@ class CalculationDetail(APIView):
             res = serializer.data[0]['calc'] | {'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result']} | x['metric'] for x in serializer.data]}
         except:
             res = serializer.data['calc'] | {'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result']} | serializer.data['metric']]}
-        return Response(res)
+        return Response(res, status=status.HTTP_200_OK)
     
 class CalculationUpdate(APIView):
     model_class = Calculations
@@ -249,7 +318,7 @@ class CalculationUpdate(APIView):
         if serializer_inp.is_valid():
             serializer_inp.save()
             serializer = CalculationSerializer(calculation)
-            return Response(serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class CalculationUpdateStatusUser(APIView):
@@ -264,62 +333,71 @@ class CalculationUpdateStatusUser(APIView):
         calculation.formation_date = timezone.now()
         calculation.save()
         serializer = CalculationSerializer(calculation)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 class CalculationUpdateStatusAdmin(APIView):
     model_class = Calculations
     serializer_class = CalculationStatusSerializer
 
     @method_permission_classes((IsManager,))
-    @swagger_auto_schema(request_body=CalculationStatusSerializer, manual_parameters=[session_id_cookie])
+    @swagger_auto_schema(request_body=CalculationStatusSerializer,
+        manual_parameters=[
+            session_id_cookie,
+            openapi.Parameter(
+            'data', openapi.IN_BODY, description='Данные для обновления расчета', required=True, type=openapi.TYPE_OBJECT
+            ),
+        ]
+            )
     def put(self, request, calculation_id):
         user1 = request.user
         calculation = get_object_or_404(self.model_class, calc_id=calculation_id)
-        if calculation.status != 'сформирован' or not calculation.data_for_calc:
-            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    
         serializer_inp = self.serializer_class(calculation, data=request.data, partial=True)
         if serializer_inp.is_valid():
-            try: 
-                serializer_inp.save()
-                if calculation.status not in ['завершен', 'отклонен']:
-                    calculation.status = 'сформирован'
-                    calculation.save()
+            if calculation.status != 'сформирован' or not calculation.data_for_calc:
+                return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+            else:
+                try: 
+                    serializer_inp.save()
+                    if calculation.status not in ['завершен', 'отклонен']:
+                        calculation.status = 'сформирован'
+                        calculation.save()
+                        return Response(status=status.HTTP_400_BAD_REQUEST)
+                except:
                     return Response(status=status.HTTP_400_BAD_REQUEST)
-            except:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-            
-            calculation.moderator = user1
-            calculation.end_date = timezone.now()
-            calculation.save()
+                
+                calculation.moderator = user1
+                calculation.end_date = timezone.now()
+                calculation.save()
 
-            if calculation.status == 'завершен':
-                sample = [float(x) for x in calculation.data_for_calc.split(' ')]
-                for metric in CalcMetrics.objects.filter(calc=calculation, status='действует'):
-                    amount = min(len(sample), metric.amount_of_data)
-                    if metric.metric.metric_code == 'mathematical_expectation':
-                        metric.result = statistics.mean(sample[:amount])
-                    elif metric.metric.metric_code == 'dispersion':
-                        if amount == 1:
-                            metric.result = 0
+                if calculation.status == 'завершен':
+                    sample = [float(x) for x in calculation.data_for_calc.split(' ')]
+                    for metric in CalcMetrics.objects.filter(calc=calculation, status='действует'):
+                        amount = min(len(sample), metric.amount_of_data)
+                        if metric.metric.metric_code == 'mathematical_expectation':
+                            metric.result = statistics.mean(sample[:amount])
+                        elif metric.metric.metric_code == 'dispersion':
+                            if amount == 1:
+                                metric.result = 0
+                            else:
+                                metric.result = statistics.variance(sample[:amount])
+                        elif metric.metric.metric_code == 'exremes':
+                            metric.result = max(sample[:amount])
+                        elif metric.metric.metric_code == 'percentiles':
+                            metric.result = statistics.median(sample[:amount])
+                        elif metric.metric.metric_code == 'mode':
+                            metric.result = statistics.mode(sample[:amount])
                         else:
-                            metric.result = statistics.variance(sample[:amount])
-                    elif metric.metric.metric_code == 'exremes':
-                        metric.result = max(sample[:amount])
-                    elif metric.metric.metric_code == 'percentiles':
-                        metric.result = statistics.median(sample[:amount])
-                    elif metric.metric.metric_code == 'mode':
-                        metric.result = statistics.mode(sample[:amount])
-                    else:
-                        continue
-                    metric.save()
-            
-            calculations = CalcMetrics.objects.filter(calc=calculation)
-            serializer = CalculationDetailSerializer(calculations, many=True)
-            try:
-                res = serializer.data[0]['calc'] | {'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result']} | x['metric'] for x in serializer.data]}
-            except:
-                res = serializer.data['calc'] | {'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result']} | serializer.data['metric']]}
-            return Response(res)
+                            continue
+                        metric.save()
+                
+                calculations = CalcMetrics.objects.filter(calc=calculation)
+                serializer = CalculationDetailSerializer(calculations, many=True)
+                try:
+                    res = serializer.data[0]['calc'] | {'metrics': [{'amount_of_data':x['amount_of_data'], 'result':x['result']} | x['metric'] for x in serializer.data]}
+                except:
+                    res = serializer.data['calc'] | {'metrics': [{'amount_of_data':serializer.data['amount_of_data'], 'result':serializer.data['result']} | serializer.data['metric']]}
+                return Response(res, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class CalculationDelete(APIView):

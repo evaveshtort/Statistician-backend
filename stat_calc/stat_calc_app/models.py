@@ -35,7 +35,7 @@ class Metrics(models.Model):
     metric_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=50)
     picture_url = models.CharField(max_length=100, blank=True, null=True)
-    description = models.TextField()
+    description = models.TextField(null=True)
     status = models.CharField(max_length=20, default='действует')
     metric_code = models.CharField(max_length=50)
     creator = models.ForeignKey('CustomUser', models.DO_NOTHING, null=True)

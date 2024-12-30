@@ -160,6 +160,7 @@ REDIS_PORT = 6379
 CORS_ALLOWED_ORIGINS = [
     "https://evaveshtort.github.io",  
     "http://localhost:3000",
+    'https://statistician.swagger.io'
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [

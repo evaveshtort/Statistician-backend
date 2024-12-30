@@ -5,7 +5,7 @@ from collections import OrderedDict
 class MetricSerializer(serializers.ModelSerializer):
     class Meta:
         model = Metrics
-        fields = ["metric_id", "title", "description", "picture_url"]
+        fields = ["metric_id", "title", "description", "picture_url", "metric_code"]
 
         def get_fields(self):
             new_fields = OrderedDict()
